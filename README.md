@@ -1,79 +1,74 @@
-# Task Tracker CLI
+# Website Tracker
 
 [![CI](https://github.com/tanhoang0803/Task_tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/tanhoang0803/Task_tracker/actions/workflows/ci.yml)
 
 > GitHub: https://github.com/tanhoang0803/Task_tracker
 > Project: https://roadmap.sh/projects/task-tracker
 
-A simple command line interface (CLI) application to track and manage your tasks.
+A CLI + web UI tool for tracking websites you want to visit, are visiting, or have visited. No external dependencies — data is stored locally in `tasks.json`.
 
-## Overview
-
-Task Tracker helps you manage what you need to do, what you have done, and what you are currently working on. Tasks are stored locally in a JSON file, requiring no external dependencies or databases.
-
-## Features
-
-- Add, update, and delete tasks
-- Mark tasks as **in-progress** or **done**
-- List all tasks
-- Filter tasks by status: `done`, `not done`, or `in-progress`
-
-## Usage
-
-All interactions are done via positional command line arguments.
+## Web UI
 
 ```bash
-# Add a new task
-task-cli add "Buy groceries"
-
-# Update a task
-task-cli update <id> "Buy groceries and cook dinner"
-
-# Delete a task
-task-cli delete <id>
-
-# Mark a task as in progress
-task-cli mark-in-progress <id>
-
-# Mark a task as done
-task-cli mark-done <id>
-
-# List all tasks
-task-cli list
-
-# List tasks by status
-task-cli list done
-task-cli list not-done
-task-cli list in-progress
+npm run serve
+# open http://localhost:3000
 ```
 
-## Task Properties
+- Card grid with status badges: **To Visit** (gray) · **Visiting** (amber) · **Visited** (green)
+- Click **Open** or the site name → marks visiting, opens the URL, auto-marks visited when you close the tab
+- Inline tag pills, click-to-edit notes, live search, filter by status or tag
 
-Each task stored in the JSON file contains:
+## CLI
 
-| Field       | Description                              |
-|-------------|------------------------------------------|
-| `id`        | Unique identifier                        |
-| `description` | Text description of the task           |
-| `status`    | `todo`, `in-progress`, or `done`         |
-| `createdAt` | Timestamp when the task was created      |
-| `updatedAt` | Timestamp when the task was last updated |
+```bash
+# Add a site (name is optional, defaults to hostname)
+node task-cli.js add <url> [name]
 
-## Storage
+# Rename a site
+node task-cli.js update <id> <name>
 
-Tasks are persisted in a `tasks.json` file in the current working directory. The file is created automatically if it does not exist.
+# Delete a site
+node task-cli.js delete <id>
+
+# Change status
+node task-cli.js mark-visiting <id>
+node task-cli.js mark-visited <id>
+
+# Notes & tags
+node task-cli.js note <id> <text>
+node task-cli.js tag <id> <tag>
+node task-cli.js untag <id> <tag>
+
+# Open in browser
+node task-cli.js open <id>
+
+# Search (url, name, notes, tags)
+node task-cli.js search <keyword>
+
+# List (no filter, or by status / tag name)
+node task-cli.js list
+node task-cli.js list to-visit
+node task-cli.js list visiting
+node task-cli.js list visited
+node task-cli.js list <tag>
+```
+
+## Schema (`tasks.json`)
+
+| Field         | Description                                    |
+|---------------|------------------------------------------------|
+| `id`          | Auto-incremented integer                       |
+| `url`         | Full URL of the site                           |
+| `name`        | Display name (defaults to hostname)            |
+| `status`      | `to-visit` · `visiting` · `visited`            |
+| `tags`        | Array of strings                               |
+| `notes`       | Free-text notes                                |
+| `lastVisited` | ISO timestamp, set when marked visited         |
+| `createdAt`   | ISO timestamp                                  |
+| `updatedAt`   | ISO timestamp                                  |
 
 ## Constraints
 
-- No external libraries or frameworks used
-- Uses only the native file system module of the chosen language
-- Errors and edge cases are handled gracefully
-
-## Project Purpose
-
-This project is a hands-on exercise for practicing:
-
-- CLI application design
-- File system interaction
-- JSON data management
-- User input handling and validation
+- No external libraries or frameworks
+- Native `fs`, `http`, `path`, `url`, `child_process` modules only
+- `tasks.json` shared between CLI and web UI — changes are immediately visible in both

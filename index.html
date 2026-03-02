@@ -1,0 +1,746 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Website Tracker</title>
+  <style>
+    /* ── Variables ─────────────────────────────────────────────── */
+    :root {
+      --bg: #f5f5f5;
+      --surface: #ffffff;
+      --border: #e0e0e0;
+      --text: #1a1a1a;
+      --text-muted: #6b7280;
+      --accent: #3b82f6;
+      --accent-hover: #2563eb;
+
+      --status-to-visit-bg: #f3f4f6;
+      --status-to-visit-text: #374151;
+      --status-visiting-bg: #fef3c7;
+      --status-visiting-text: #92400e;
+      --status-visited-bg: #d1fae5;
+      --status-visited-text: #065f46;
+
+      --danger: #ef4444;
+      --danger-hover: #dc2626;
+      --radius: 10px;
+      --shadow: 0 1px 3px rgba(0,0,0,.1), 0 1px 2px rgba(0,0,0,.06);
+    }
+
+    /* ── Reset ─────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: system-ui, -apple-system, sans-serif; background: var(--bg); color: var(--text); min-height: 100vh; }
+    button { cursor: pointer; font: inherit; border: none; background: none; }
+    input, textarea { font: inherit; }
+    a { color: var(--accent); }
+
+    /* ── Header ────────────────────────────────────────────────── */
+    header {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1.5rem;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      height: 56px;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+    header h1 { font-size: 1.1rem; font-weight: 700; white-space: nowrap; }
+    #search {
+      flex: 1;
+      max-width: 400px;
+      padding: .45rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    #search:focus { border-color: var(--accent); }
+    #btn-open-add {
+      display: flex;
+      align-items: center;
+      gap: .35rem;
+      padding: .45rem .9rem;
+      background: var(--accent);
+      color: #fff;
+      border-radius: var(--radius);
+      font-size: .88rem;
+      font-weight: 600;
+      white-space: nowrap;
+      transition: background .15s;
+    }
+    #btn-open-add:hover { background: var(--accent-hover); }
+
+    /* ── Add form ──────────────────────────────────────────────── */
+    #add-form-wrapper {
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height .25s ease, padding .25s ease;
+      padding: 0 1.5rem;
+    }
+    #add-form-wrapper.open { max-height: 120px; padding: .75rem 1.5rem; }
+    #add-form {
+      display: flex;
+      gap: .6rem;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+    #add-form input {
+      padding: .4rem .7rem;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      font-size: .88rem;
+      outline: none;
+      transition: border-color .15s;
+    }
+    #add-form input:focus { border-color: var(--accent); }
+    #input-url { flex: 2; min-width: 200px; }
+    #input-name { flex: 1; min-width: 140px; }
+    #add-form .btn-primary {
+      padding: .4rem .85rem;
+      background: var(--accent);
+      color: #fff;
+      border-radius: var(--radius);
+      font-size: .88rem;
+      font-weight: 600;
+      transition: background .15s;
+    }
+    #add-form .btn-primary:hover { background: var(--accent-hover); }
+    #add-form .btn-cancel {
+      padding: .4rem .7rem;
+      color: var(--text-muted);
+      font-size: .85rem;
+    }
+    #add-form .btn-cancel:hover { color: var(--text); }
+    #add-form-error {
+      width: 100%;
+      font-size: .8rem;
+      color: var(--danger);
+      display: none;
+    }
+
+    /* ── Toolbar (filters) ─────────────────────────────────────── */
+    #toolbar {
+      padding: .75rem 1.5rem;
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: .5rem;
+    }
+    .filter-btn {
+      padding: .3rem .75rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: .82rem;
+      color: var(--text-muted);
+      background: var(--surface);
+      transition: all .15s;
+    }
+    .filter-btn:hover { border-color: var(--accent); color: var(--accent); }
+    .filter-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+    #tag-filters { display: flex; flex-wrap: wrap; gap: .4rem; }
+
+    /* ── Site grid ─────────────────────────────────────────────── */
+    #site-list {
+      padding: 1rem 1.5rem 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(340px, 1fr));
+      gap: 1rem;
+    }
+    .empty-state {
+      grid-column: 1 / -1;
+      text-align: center;
+      color: var(--text-muted);
+      padding: 3rem 1rem;
+      font-size: .95rem;
+    }
+
+    /* ── Card ──────────────────────────────────────────────────── */
+    .site-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow);
+      display: flex;
+      flex-direction: column;
+      gap: .6rem;
+      padding: 1rem;
+      transition: box-shadow .15s;
+    }
+    .site-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
+
+    /* card header */
+    .card-header { display: flex; align-items: flex-start; gap: .5rem; }
+    .status-badge {
+      flex-shrink: 0;
+      padding: .2rem .55rem;
+      border-radius: 999px;
+      font-size: .72rem;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: .03em;
+    }
+    .badge-to-visit   { background: var(--status-to-visit-bg);  color: var(--status-to-visit-text); }
+    .badge-visiting   { background: var(--status-visiting-bg);  color: var(--status-visiting-text); }
+    .badge-visited    { background: var(--status-visited-bg);   color: var(--status-visited-text); }
+
+    .card-title-group { flex: 1; min-width: 0; }
+    .site-name {
+      font-weight: 600;
+      font-size: .95rem;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      text-decoration: none;
+      color: var(--text);
+    }
+    .site-name:hover { color: var(--accent); }
+    .site-url {
+      font-size: .78rem;
+      color: var(--text-muted);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      display: block;
+      margin-top: .1rem;
+    }
+
+    /* tags row */
+    .tags-row { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
+    .tag-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: .25rem;
+      padding: .15rem .5rem;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 999px;
+      font-size: .75rem;
+      font-weight: 500;
+    }
+    .tag-remove {
+      color: #93c5fd;
+      font-size: .85rem;
+      line-height: 1;
+      padding: 0 .1rem;
+    }
+    .tag-remove:hover { color: var(--danger); }
+    .tag-add-form { display: flex; gap: .25rem; align-items: center; }
+    .tag-add-input {
+      width: 80px;
+      padding: .15rem .4rem;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      font-size: .75rem;
+      outline: none;
+    }
+    .tag-add-input:focus { border-color: var(--accent); }
+    .tag-add-btn {
+      font-size: .75rem;
+      padding: .15rem .4rem;
+      background: #eff6ff;
+      color: #1d4ed8;
+      border-radius: 999px;
+    }
+    .tag-add-btn:hover { background: #dbeafe; }
+    .tag-error { font-size: .72rem; color: var(--danger); }
+
+    /* notes */
+    .notes-display {
+      font-size: .82rem;
+      color: var(--text-muted);
+      cursor: pointer;
+      border-radius: 6px;
+      padding: .3rem .4rem;
+      min-height: 28px;
+      border: 1px solid transparent;
+      transition: border-color .15s;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .notes-display:hover { border-color: var(--border); }
+    .notes-display.placeholder { color: #c4c4c4; font-style: italic; }
+    .notes-textarea {
+      display: none;
+      width: 100%;
+      min-height: 60px;
+      padding: .3rem .4rem;
+      border: 1px solid var(--accent);
+      border-radius: 6px;
+      font-size: .82rem;
+      resize: vertical;
+      outline: none;
+    }
+
+    /* action buttons */
+    .card-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .2rem; }
+    .btn-sm {
+      padding: .3rem .65rem;
+      border-radius: 6px;
+      font-size: .78rem;
+      font-weight: 500;
+      border: 1px solid var(--border);
+      color: var(--text-muted);
+      background: var(--surface);
+      transition: all .15s;
+    }
+    .btn-sm:hover { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.btn-open { border-color: var(--accent); color: var(--accent); }
+    .btn-sm.btn-open:hover { background: var(--accent); color: #fff; }
+    .btn-sm.btn-danger { color: var(--danger); }
+    .btn-sm.btn-danger:hover { border-color: var(--danger); background: #fee2e2; }
+    .btn-sm.btn-visiting { color: #92400e; border-color: #fcd34d; }
+    .btn-sm.btn-visiting:hover { background: var(--status-visiting-bg); }
+    .btn-sm.btn-visited { color: #065f46; border-color: #6ee7b7; }
+    .btn-sm.btn-visited:hover { background: var(--status-visited-bg); }
+  </style>
+</head>
+<body>
+
+<!-- ── Header ──────────────────────────────────────────────────────────── -->
+<header>
+  <h1>Website Tracker</h1>
+  <input id="search" type="search" placeholder="Search sites…" />
+  <button id="btn-open-add">+ Add URL</button>
+</header>
+
+<!-- ── Add form ────────────────────────────────────────────────────────── -->
+<div id="add-form-wrapper">
+  <form id="add-form" autocomplete="off">
+    <input id="input-url"  type="url"  placeholder="https://example.com" required />
+    <input id="input-name" type="text" placeholder="Name (optional)" />
+    <button type="submit" class="btn-primary">Add</button>
+    <button type="button" class="btn-cancel" id="btn-cancel-add">Cancel</button>
+    <span id="add-form-error"></span>
+  </form>
+</div>
+
+<!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
+<div id="toolbar">
+  <button class="filter-btn active" data-filter="">All</button>
+  <button class="filter-btn" data-filter="to-visit">To Visit</button>
+  <button class="filter-btn" data-filter="visiting">Visiting</button>
+  <button class="filter-btn" data-filter="visited">Visited</button>
+  <div id="tag-filters"></div>
+</div>
+
+<!-- ── Card grid ────────────────────────────────────────────────────────── -->
+<div id="site-list"></div>
+
+<script>
+  "use strict";
+
+  // ── State ────────────────────────────────────────────────────────────────────
+  const state = { tasks: [], filterStatus: "", filterTag: "", query: "" };
+
+  // ── API client ───────────────────────────────────────────────────────────────
+  const api = {
+    async getTasks(q = "", filter = "") {
+      const params = new URLSearchParams();
+      if (q) params.set("q", q);
+      if (filter) params.set("filter", filter);
+      const res = await fetch(`/api/tasks?${params}`);
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async createTask(url, name) {
+      const res = await fetch("/api/tasks", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ url, name }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to create task");
+      }
+      return res.json();
+    },
+    async updateTask(id, name) {
+      const res = await fetch(`/api/tasks/${id}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async deleteTask(id) {
+      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async setStatus(id, status) {
+      const res = await fetch(`/api/tasks/${id}/status`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async setNote(id, notes) {
+      const res = await fetch(`/api/tasks/${id}/note`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes }),
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+    async addTag(id, tag) {
+      const res = await fetch(`/api/tasks/${id}/tag`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ tag }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to add tag");
+      }
+      return res.json();
+    },
+    async removeTag(id, tag) {
+      const res = await fetch(`/api/tasks/${id}/tag/${encodeURIComponent(tag)}`, {
+        method: "DELETE",
+      });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
+  };
+
+  // ── Render helpers ───────────────────────────────────────────────────────────
+  function badgeClass(status) {
+    return { "to-visit": "badge-to-visit", "visiting": "badge-visiting", "visited": "badge-visited" }[status] || "badge-to-visit";
+  }
+  function badgeLabel(status) {
+    return { "to-visit": "To Visit", "visiting": "Visiting", "visited": "Visited" }[status] || status;
+  }
+
+  function renderTagFilters() {
+    const allTags = [...new Set(state.tasks.flatMap((t) => t.tags || []))].sort();
+    const container = document.getElementById("tag-filters");
+    container.innerHTML = "";
+    allTags.forEach((tag) => {
+      const btn = document.createElement("button");
+      btn.className = "filter-btn" + (state.filterTag === tag ? " active" : "");
+      btn.dataset.tag = tag;
+      btn.textContent = `#${tag}`;
+      container.appendChild(btn);
+    });
+  }
+
+  function makeCard(task) {
+    const card = document.createElement("div");
+    card.className = "site-card";
+    card.dataset.id = task.id;
+
+    // header
+    const header = document.createElement("div");
+    header.className = "card-header";
+
+    const badge = document.createElement("span");
+    badge.className = `status-badge ${badgeClass(task.status)}`;
+    badge.textContent = badgeLabel(task.status);
+
+    const titleGroup = document.createElement("div");
+    titleGroup.className = "card-title-group";
+
+    const nameLink = document.createElement("a");
+    nameLink.className = "site-name";
+    nameLink.href = task.url;
+    nameLink.target = "_blank";
+    nameLink.rel = "noopener noreferrer";
+    nameLink.textContent = task.name;
+
+    const urlSpan = document.createElement("span");
+    urlSpan.className = "site-url";
+    urlSpan.textContent = task.url;
+
+    titleGroup.appendChild(nameLink);
+    titleGroup.appendChild(urlSpan);
+    header.appendChild(badge);
+    header.appendChild(titleGroup);
+    card.appendChild(header);
+
+    // tags row
+    const tagsRow = document.createElement("div");
+    tagsRow.className = "tags-row";
+
+    (task.tags || []).forEach((tag) => {
+      const pill = document.createElement("span");
+      pill.className = "tag-pill";
+      pill.innerHTML = `${esc(tag)}<button class="tag-remove" data-tag="${esc(tag)}" title="Remove tag">×</button>`;
+      tagsRow.appendChild(pill);
+    });
+
+    // inline add-tag form
+    const tagForm = document.createElement("form");
+    tagForm.className = "tag-add-form";
+    tagForm.innerHTML = `
+      <input class="tag-add-input" type="text" placeholder="add tag" maxlength="32" />
+      <button type="submit" class="tag-add-btn">+</button>
+    `;
+    const tagError = document.createElement("span");
+    tagError.className = "tag-error";
+
+    tagForm.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const input = tagForm.querySelector("input");
+      const val = input.value.trim().toLowerCase();
+      if (!val) return;
+      if ((task.tags || []).includes(val)) {
+        tagError.textContent = "Tag already exists";
+        return;
+      }
+      tagError.textContent = "";
+      try {
+        await api.addTag(task.id, val);
+        input.value = "";
+        await loadAndRender();
+      } catch (err) {
+        tagError.textContent = err.message;
+      }
+    });
+
+    tagsRow.appendChild(tagForm);
+    tagsRow.appendChild(tagError);
+    card.appendChild(tagsRow);
+
+    // notes
+    const notesDisplay = document.createElement("div");
+    notesDisplay.className = "notes-display" + (task.notes ? "" : " placeholder");
+    notesDisplay.textContent = task.notes || "Click to add notes…";
+    notesDisplay.title = "Click to edit notes";
+
+    const notesTextarea = document.createElement("textarea");
+    notesTextarea.className = "notes-textarea";
+    notesTextarea.value = task.notes || "";
+    notesTextarea.placeholder = "Add notes…";
+
+    notesDisplay.addEventListener("click", () => {
+      notesDisplay.style.display = "none";
+      notesTextarea.style.display = "block";
+      notesTextarea.focus();
+    });
+
+    notesTextarea.addEventListener("blur", async () => {
+      const newNotes = notesTextarea.value;
+      try {
+        await api.setNote(task.id, newNotes);
+      } catch {
+        // silently re-render to restore state
+      }
+      await loadAndRender();
+    });
+
+    card.appendChild(notesDisplay);
+    card.appendChild(notesTextarea);
+
+    // action buttons
+    const actions = document.createElement("div");
+    actions.className = "card-actions";
+    actions.innerHTML = `
+      <button class="btn-sm btn-open" data-action="open">Open</button>
+      <button class="btn-sm btn-visiting" data-action="mark-visiting">Visiting</button>
+      <button class="btn-sm btn-visited"  data-action="mark-visited">Mark Visited</button>
+      <button class="btn-sm btn-danger"   data-action="delete">Delete</button>
+    `;
+    card.appendChild(actions);
+
+    return card;
+  }
+
+  function esc(str) {
+    return String(str)
+      .replace(/&/g, "&amp;")
+      .replace(/"/g, "&quot;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;");
+  }
+
+  function render() {
+    const list = document.getElementById("site-list");
+    list.innerHTML = "";
+
+    renderTagFilters();
+
+    if (state.tasks.length === 0) {
+      const p = document.createElement("p");
+      p.className = "empty-state";
+      p.textContent = "No sites found. Add one above!";
+      list.appendChild(p);
+      return;
+    }
+
+    state.tasks.forEach((task) => {
+      list.appendChild(makeCard(task));
+    });
+  }
+
+  // ── Load + render ────────────────────────────────────────────────────────────
+  async function loadAndRender() {
+    // Build filter param: status takes priority, then tag
+    const filter = state.filterStatus || state.filterTag;
+    try {
+      state.tasks = await api.getTasks(state.query, filter);
+    } catch (err) {
+      console.error("Failed to load tasks:", err);
+      state.tasks = [];
+    }
+    render();
+  }
+
+  // ── Open + auto-track ────────────────────────────────────────────────────────
+  async function openAndTrack(id) {
+    const task = state.tasks.find((t) => t.id === id);
+    if (!task) return;
+
+    try { await api.setStatus(id, "visiting"); } catch (err) { alert(err.message); return; }
+    await loadAndRender();
+
+    // Open WITHOUT noopener so we can poll winRef.closed
+    const winRef = window.open(task.url, "_blank");
+    if (!winRef) {
+      alert("Popup blocked — allow popups for localhost:3000 to enable auto-tracking.");
+      return;
+    }
+
+    const timer = setInterval(async () => {
+      if (winRef.closed) {
+        clearInterval(timer);
+        try { await api.setStatus(id, "visited"); } catch {}
+        await loadAndRender();
+      }
+    }, 500);
+  }
+
+  // ── Event delegation on #site-list ──────────────────────────────────────────
+  document.getElementById("site-list").addEventListener("click", async (e) => {
+    const card = e.target.closest(".site-card");
+    if (!card) return;
+    const id = Number(card.dataset.id);
+
+    // tag remove
+    if (e.target.classList.contains("tag-remove")) {
+      const tag = e.target.dataset.tag;
+      try { await api.removeTag(id, tag); } catch (err) { alert(err.message); return; }
+      await loadAndRender();
+      return;
+    }
+
+    // site-name link — intercept left-click, treat same as Open button
+    if (e.target.closest(".site-name")) {
+      e.preventDefault();
+      await openAndTrack(id);
+      return;
+    }
+
+    const action = e.target.dataset.action;
+    if (!action) return;
+
+    if (action === "open") {
+      await openAndTrack(id);
+      return;
+    }
+    if (action === "mark-visiting") {
+      try { await api.setStatus(id, "visiting"); } catch (err) { alert(err.message); return; }
+      await loadAndRender();
+      return;
+    }
+    if (action === "mark-visited") {
+      try { await api.setStatus(id, "visited"); } catch (err) { alert(err.message); return; }
+      await loadAndRender();
+      return;
+    }
+    if (action === "delete") {
+      if (!confirm("Delete this site?")) return;
+      try { await api.deleteTask(id); } catch (err) { alert(err.message); return; }
+      await loadAndRender();
+    }
+  });
+
+  // ── Filter buttons ───────────────────────────────────────────────────────────
+  document.getElementById("toolbar").addEventListener("click", async (e) => {
+    const btn = e.target.closest(".filter-btn");
+    if (!btn) return;
+
+    if (btn.dataset.tag !== undefined) {
+      // tag filter toggle
+      state.filterTag = state.filterTag === btn.dataset.tag ? "" : btn.dataset.tag;
+      state.filterStatus = "";
+    } else if (btn.dataset.filter !== undefined) {
+      state.filterStatus = state.filterStatus === btn.dataset.filter ? "" : btn.dataset.filter;
+      state.filterTag = "";
+    }
+
+    // update active classes on status filter buttons
+    document.querySelectorAll(".filter-btn[data-filter]").forEach((b) => {
+      b.classList.toggle("active", b.dataset.filter === state.filterStatus);
+    });
+    document.querySelectorAll(".filter-btn[data-tag]").forEach((b) => {
+      b.classList.toggle("active", b.dataset.tag === state.filterTag);
+    });
+
+    await loadAndRender();
+  });
+
+  // ── Add form ─────────────────────────────────────────────────────────────────
+  const addWrapper = document.getElementById("add-form-wrapper");
+  const addForm = document.getElementById("add-form");
+  const addError = document.getElementById("add-form-error");
+
+  document.getElementById("btn-open-add").addEventListener("click", () => {
+    addWrapper.classList.add("open");
+    document.getElementById("input-url").focus();
+  });
+  document.getElementById("btn-cancel-add").addEventListener("click", () => {
+    addWrapper.classList.remove("open");
+    addForm.reset();
+    addError.style.display = "none";
+  });
+
+  addForm.addEventListener("submit", async (e) => {
+    e.preventDefault();
+    const url = document.getElementById("input-url").value.trim();
+    const name = document.getElementById("input-name").value.trim();
+
+    // client-side URL validation
+    try { new URL(url); } catch {
+      addError.textContent = "Please enter a valid URL (include https://)";
+      addError.style.display = "block";
+      return;
+    }
+
+    try {
+      await api.createTask(url, name);
+      addForm.reset();
+      addWrapper.classList.remove("open");
+      addError.style.display = "none";
+      await loadAndRender();
+    } catch (err) {
+      addError.textContent = err.message;
+      addError.style.display = "block";
+    }
+  });
+
+  // ── Search (debounced) ───────────────────────────────────────────────────────
+  let searchTimer;
+  document.getElementById("search").addEventListener("input", (e) => {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(async () => {
+      state.query = e.target.value.trim();
+      await loadAndRender();
+    }, 300);
+  });
+
+  // ── Init ─────────────────────────────────────────────────────────────────────
+  loadAndRender();
+</script>
+</body>
+</html>

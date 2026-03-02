@@ -21,15 +21,26 @@ jobs:
 
       - name: Smoke test CLI
         run: |
-          node task-cli.js add "Buy groceries"
-          node task-cli.js add "Write report"
-          node task-cli.js add "Fix bug"
-          node task-cli.js mark-in-progress 2
-          node task-cli.js mark-done 3
-          node task-cli.js update 1 "Buy groceries and cook dinner"
+          node task-cli.js add "https://example.com" "Example"
+          node task-cli.js add "https://github.com"
           node task-cli.js list
-          node task-cli.js list done
-          node task-cli.js list not-done
-          node task-cli.js list in-progress
-          node task-cli.js delete 3
+          node task-cli.js list to-visit
+          node task-cli.js mark-visiting 1
+          node task-cli.js list visiting
+          node task-cli.js mark-visited 1
+          node task-cli.js list visited
+          node task-cli.js note 1 "Great site"
+          node task-cli.js tag 1 "work"
+          node task-cli.js untag 1 "work"
+          node task-cli.js update 2 "GitHub"
+          node task-cli.js search "github"
+          node task-cli.js delete 2
           node task-cli.js list
+
+      - name: Smoke test server
+        run: |
+          node server.js &
+          sleep 1
+          curl -sf http://localhost:3000/ | grep -q "Website Tracker"
+          curl -sf http://localhost:3000/api/tasks
+          kill %1

@@ -7,7 +7,8 @@
     "task-cli": "./task-cli.js"
   },
   "scripts": {
-    "start": "node task-cli.js"
+    "start": "node task-cli.js",
+    "serve": "node server.js"
   },
   "license": "MIT"
 }
