@@ -1,0 +1,13 @@
+{
+  "name": "task-cli",
+  "version": "1.0.0",
+  "description": "A simple CLI to track and manage your tasks",
+  "main": "task-cli.js",
+  "bin": {
+    "task-cli": "./task-cli.js"
+  },
+  "scripts": {
+    "start": "node task-cli.js"
+  },
+  "license": "MIT"
+}
