@@ -9,12 +9,12 @@ A CLI + web UI tool for tracking websites you want to visit, are visiting, or ha
 
 ## Web UI
 
+**Live:** https://tanhoang0803.github.io/Task_tracker/
+
 **Source:** [`index.html`](https://github.com/tanhoang0803/Task_tracker/blob/master/index.html)
 
-```bash
-npm run serve
-# open http://localhost:3000
-```
+> Data is stored in your browser's `localStorage` — no server needed.
+> Run `npm run serve` to use the local server version (shares data with the CLI via `tasks.json`).
 
 - Card grid with status badges: **To Visit** (gray) · **Visiting** (amber) · **Visited** (green)
 - Click **Open** or the site name → marks visiting, opens the URL, auto-marks visited when you close the tab

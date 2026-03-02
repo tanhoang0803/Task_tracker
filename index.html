@@ -175,7 +175,6 @@
     }
     .site-card:hover { box-shadow: 0 4px 12px rgba(0,0,0,.1); }
 
-    /* card header */
     .card-header { display: flex; align-items: flex-start; gap: .5rem; }
     .status-badge {
       flex-shrink: 0;
@@ -186,9 +185,9 @@
       text-transform: uppercase;
       letter-spacing: .03em;
     }
-    .badge-to-visit   { background: var(--status-to-visit-bg);  color: var(--status-to-visit-text); }
-    .badge-visiting   { background: var(--status-visiting-bg);  color: var(--status-visiting-text); }
-    .badge-visited    { background: var(--status-visited-bg);   color: var(--status-visited-text); }
+    .badge-to-visit  { background: var(--status-to-visit-bg);  color: var(--status-to-visit-text); }
+    .badge-visiting  { background: var(--status-visiting-bg);  color: var(--status-visiting-text); }
+    .badge-visited   { background: var(--status-visited-bg);   color: var(--status-visited-text); }
 
     .card-title-group { flex: 1; min-width: 0; }
     .site-name {
@@ -199,6 +198,7 @@
       text-overflow: ellipsis;
       text-decoration: none;
       color: var(--text);
+      display: block;
     }
     .site-name:hover { color: var(--accent); }
     .site-url {
@@ -211,7 +211,6 @@
       margin-top: .1rem;
     }
 
-    /* tags row */
     .tags-row { display: flex; flex-wrap: wrap; gap: .35rem; align-items: center; }
     .tag-pill {
       display: inline-flex;
@@ -224,12 +223,7 @@
       font-size: .75rem;
       font-weight: 500;
     }
-    .tag-remove {
-      color: #93c5fd;
-      font-size: .85rem;
-      line-height: 1;
-      padding: 0 .1rem;
-    }
+    .tag-remove { color: #93c5fd; font-size: .85rem; line-height: 1; padding: 0 .1rem; }
     .tag-remove:hover { color: var(--danger); }
     .tag-add-form { display: flex; gap: .25rem; align-items: center; }
     .tag-add-input {
@@ -241,17 +235,10 @@
       outline: none;
     }
     .tag-add-input:focus { border-color: var(--accent); }
-    .tag-add-btn {
-      font-size: .75rem;
-      padding: .15rem .4rem;
-      background: #eff6ff;
-      color: #1d4ed8;
-      border-radius: 999px;
-    }
+    .tag-add-btn { font-size: .75rem; padding: .15rem .4rem; background: #eff6ff; color: #1d4ed8; border-radius: 999px; }
     .tag-add-btn:hover { background: #dbeafe; }
     .tag-error { font-size: .72rem; color: var(--danger); }
 
-    /* notes */
     .notes-display {
       font-size: .82rem;
       color: var(--text-muted);
@@ -278,7 +265,6 @@
       outline: none;
     }
 
-    /* action buttons */
     .card-actions { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .2rem; }
     .btn-sm {
       padding: .3rem .65rem;
@@ -303,14 +289,12 @@
 </head>
 <body>
 
-<!-- ── Header ──────────────────────────────────────────────────────────── -->
 <header>
   <h1>Website Tracker</h1>
   <input id="search" type="search" placeholder="Search sites…" />
   <button id="btn-open-add">+ Add URL</button>
 </header>
 
-<!-- ── Add form ────────────────────────────────────────────────────────── -->
 <div id="add-form-wrapper">
   <form id="add-form" autocomplete="off">
     <input id="input-url"  type="url"  placeholder="https://example.com" required />
@@ -321,7 +305,6 @@
   </form>
 </div>
 
-<!-- ── Toolbar ──────────────────────────────────────────────────────────── -->
 <div id="toolbar">
   <button class="filter-btn active" data-filter="">All</button>
   <button class="filter-btn" data-filter="to-visit">To Visit</button>
@@ -330,103 +313,122 @@
   <div id="tag-filters"></div>
 </div>
 
-<!-- ── Card grid ────────────────────────────────────────────────────────── -->
 <div id="site-list"></div>
 
 <script>
   "use strict";
 
-  // ── State ────────────────────────────────────────────────────────────────────
-  const state = { tasks: [], filterStatus: "", filterTag: "", query: "" };
+  // ── localStorage store ───────────────────────────────────────────────────────
+  const STORAGE_KEY = "website-tracker-tasks";
 
-  // ── API client ───────────────────────────────────────────────────────────────
-  const api = {
-    async getTasks(q = "", filter = "") {
-      const params = new URLSearchParams();
-      if (q) params.set("q", q);
-      if (filter) params.set("filter", filter);
-      const res = await fetch(`/api/tasks?${params}`);
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+  function storedTasks() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || "[]"); } catch { return []; }
+  }
+  function persist(tasks) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+
+  const store = {
+    create(url, name) {
+      let hostname;
+      try { hostname = new URL(url).hostname; } catch { throw new Error(`Invalid URL: ${url}`); }
+      const tasks = storedTasks();
+      const id = tasks.length > 0 ? Math.max(...tasks.map(t => t.id)) + 1 : 1;
+      const now = new Date().toISOString();
+      const task = { id, url, name: (name || "").trim() || hostname, status: "to-visit", tags: [], notes: "", lastVisited: null, createdAt: now, updatedAt: now };
+      tasks.push(task);
+      persist(tasks);
+      return task;
     },
-    async createTask(url, name) {
-      const res = await fetch("/api/tasks", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ url, name }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to create task");
-      }
-      return res.json();
+    update(id, name) {
+      const tasks = storedTasks();
+      const task = tasks.find(t => t.id === id);
+      if (!task) throw new Error(`No site with id ${id}`);
+      task.name = name.trim();
+      task.updatedAt = new Date().toISOString();
+      persist(tasks);
+      return task;
     },
-    async updateTask(id, name) {
-      const res = await fetch(`/api/tasks/${id}`, {
-        method: "PUT",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ name }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+    delete(id) {
+      const tasks = storedTasks();
+      const idx = tasks.findIndex(t => t.id === id);
+      if (idx === -1) throw new Error(`No site with id ${id}`);
+      tasks.splice(idx, 1);
+      persist(tasks);
     },
-    async deleteTask(id) {
-      const res = await fetch(`/api/tasks/${id}`, { method: "DELETE" });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+    setStatus(id, status) {
+      const tasks = storedTasks();
+      const task = tasks.find(t => t.id === id);
+      if (!task) throw new Error(`No site with id ${id}`);
+      const now = new Date().toISOString();
+      task.status = status;
+      task.updatedAt = now;
+      if (status === "visited") task.lastVisited = now;
+      persist(tasks);
+      return task;
     },
-    async setStatus(id, status) {
-      const res = await fetch(`/api/tasks/${id}/status`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ status }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+    setNote(id, notes) {
+      const tasks = storedTasks();
+      const task = tasks.find(t => t.id === id);
+      if (!task) throw new Error(`No site with id ${id}`);
+      task.notes = notes;
+      task.updatedAt = new Date().toISOString();
+      persist(tasks);
+      return task;
     },
-    async setNote(id, notes) {
-      const res = await fetch(`/api/tasks/${id}/note`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes }),
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+    addTag(id, tag) {
+      const tasks = storedTasks();
+      const task = tasks.find(t => t.id === id);
+      if (!task) throw new Error(`No site with id ${id}`);
+      if (task.tags.includes(tag)) throw new Error(`Tag "${tag}" already exists`);
+      task.tags.push(tag);
+      task.updatedAt = new Date().toISOString();
+      persist(tasks);
+      return task;
     },
-    async addTag(id, tag) {
-      const res = await fetch(`/api/tasks/${id}/tag`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ tag }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || "Failed to add tag");
-      }
-      return res.json();
-    },
-    async removeTag(id, tag) {
-      const res = await fetch(`/api/tasks/${id}/tag/${encodeURIComponent(tag)}`, {
-        method: "DELETE",
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
+    removeTag(id, tag) {
+      const tasks = storedTasks();
+      const task = tasks.find(t => t.id === id);
+      if (!task) throw new Error(`No site with id ${id}`);
+      if (!task.tags.includes(tag)) throw new Error(`Tag "${tag}" not found`);
+      task.tags = task.tags.filter(t => t !== tag);
+      task.updatedAt = new Date().toISOString();
+      persist(tasks);
+      return task;
     },
   };
 
-  // ── Render helpers ───────────────────────────────────────────────────────────
-  function badgeClass(status) {
-    return { "to-visit": "badge-to-visit", "visiting": "badge-visiting", "visited": "badge-visited" }[status] || "badge-to-visit";
+  // ── State ────────────────────────────────────────────────────────────────────
+  const state = { tasks: [], filterStatus: "", filterTag: "", query: "" };
+
+  function getFiltered() {
+    const q = state.query.toLowerCase();
+    const STATUS_SET = new Set(["to-visit", "visiting", "visited"]);
+    let tasks = storedTasks();
+
+    if (q) tasks = tasks.filter(t =>
+      t.url.toLowerCase().includes(q) ||
+      t.name.toLowerCase().includes(q) ||
+      (t.notes || "").toLowerCase().includes(q) ||
+      (t.tags || []).some(tag => tag.toLowerCase().includes(q))
+    );
+    if (state.filterStatus) tasks = tasks.filter(t => t.status === state.filterStatus);
+    if (state.filterTag)    tasks = tasks.filter(t => (t.tags || []).includes(state.filterTag));
+    return tasks;
   }
-  function badgeLabel(status) {
-    return { "to-visit": "To Visit", "visiting": "Visiting", "visited": "Visited" }[status] || status;
+
+  // ── Render helpers ───────────────────────────────────────────────────────────
+  function badgeClass(s) { return { "to-visit": "badge-to-visit", visiting: "badge-visiting", visited: "badge-visited" }[s] || "badge-to-visit"; }
+  function badgeLabel(s) { return { "to-visit": "To Visit", visiting: "Visiting", visited: "Visited" }[s] || s; }
+  function esc(str) {
+    return String(str).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
   }
 
   function renderTagFilters() {
-    const allTags = [...new Set(state.tasks.flatMap((t) => t.tags || []))].sort();
+    const allTags = [...new Set(storedTasks().flatMap(t => t.tags || []))].sort();
     const container = document.getElementById("tag-filters");
     container.innerHTML = "";
-    allTags.forEach((tag) => {
+    allTags.forEach(tag => {
       const btn = document.createElement("button");
       btn.className = "filter-btn" + (state.filterTag === tag ? " active" : "");
       btn.dataset.tag = tag;
@@ -472,37 +474,29 @@
     const tagsRow = document.createElement("div");
     tagsRow.className = "tags-row";
 
-    (task.tags || []).forEach((tag) => {
+    (task.tags || []).forEach(tag => {
       const pill = document.createElement("span");
       pill.className = "tag-pill";
       pill.innerHTML = `${esc(tag)}<button class="tag-remove" data-tag="${esc(tag)}" title="Remove tag">×</button>`;
       tagsRow.appendChild(pill);
     });
 
-    // inline add-tag form
     const tagForm = document.createElement("form");
     tagForm.className = "tag-add-form";
-    tagForm.innerHTML = `
-      <input class="tag-add-input" type="text" placeholder="add tag" maxlength="32" />
-      <button type="submit" class="tag-add-btn">+</button>
-    `;
+    tagForm.innerHTML = `<input class="tag-add-input" type="text" placeholder="add tag" maxlength="32" /><button type="submit" class="tag-add-btn">+</button>`;
     const tagError = document.createElement("span");
     tagError.className = "tag-error";
 
-    tagForm.addEventListener("submit", async (e) => {
+    tagForm.addEventListener("submit", e => {
       e.preventDefault();
       const input = tagForm.querySelector("input");
       const val = input.value.trim().toLowerCase();
       if (!val) return;
-      if ((task.tags || []).includes(val)) {
-        tagError.textContent = "Tag already exists";
-        return;
-      }
       tagError.textContent = "";
       try {
-        await api.addTag(task.id, val);
+        store.addTag(task.id, val);
         input.value = "";
-        await loadAndRender();
+        loadAndRender();
       } catch (err) {
         tagError.textContent = err.message;
       }
@@ -528,15 +522,9 @@
       notesTextarea.style.display = "block";
       notesTextarea.focus();
     });
-
-    notesTextarea.addEventListener("blur", async () => {
-      const newNotes = notesTextarea.value;
-      try {
-        await api.setNote(task.id, newNotes);
-      } catch {
-        // silently re-render to restore state
-      }
-      await loadAndRender();
+    notesTextarea.addEventListener("blur", () => {
+      try { store.setNote(task.id, notesTextarea.value); } catch {}
+      loadAndRender();
     });
 
     card.appendChild(notesDisplay);
@@ -546,30 +534,19 @@
     const actions = document.createElement("div");
     actions.className = "card-actions";
     actions.innerHTML = `
-      <button class="btn-sm btn-open" data-action="open">Open</button>
+      <button class="btn-sm btn-open"     data-action="open">Open</button>
       <button class="btn-sm btn-visiting" data-action="mark-visiting">Visiting</button>
       <button class="btn-sm btn-visited"  data-action="mark-visited">Mark Visited</button>
       <button class="btn-sm btn-danger"   data-action="delete">Delete</button>
     `;
     card.appendChild(actions);
-
     return card;
-  }
-
-  function esc(str) {
-    return String(str)
-      .replace(/&/g, "&amp;")
-      .replace(/"/g, "&quot;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;");
   }
 
   function render() {
     const list = document.getElementById("site-list");
     list.innerHTML = "";
-
     renderTagFilters();
-
     if (state.tasks.length === 0) {
       const p = document.createElement("p");
       p.className = "empty-state";
@@ -577,101 +554,82 @@
       list.appendChild(p);
       return;
     }
-
-    state.tasks.forEach((task) => {
-      list.appendChild(makeCard(task));
-    });
+    state.tasks.forEach(task => list.appendChild(makeCard(task)));
   }
 
-  // ── Load + render ────────────────────────────────────────────────────────────
-  async function loadAndRender() {
-    // Build filter param: status takes priority, then tag
-    const filter = state.filterStatus || state.filterTag;
-    try {
-      state.tasks = await api.getTasks(state.query, filter);
-    } catch (err) {
-      console.error("Failed to load tasks:", err);
-      state.tasks = [];
-    }
+  function loadAndRender() {
+    state.tasks = getFiltered();
     render();
   }
 
   // ── Open + auto-track ────────────────────────────────────────────────────────
-  async function openAndTrack(id) {
-    const task = state.tasks.find((t) => t.id === id);
+  function openAndTrack(id) {
+    const task = storedTasks().find(t => t.id === id);
     if (!task) return;
 
-    try { await api.setStatus(id, "visiting"); } catch (err) { alert(err.message); return; }
-    await loadAndRender();
+    try { store.setStatus(id, "visiting"); } catch (err) { alert(err.message); return; }
+    loadAndRender();
 
-    // Open WITHOUT noopener so we can poll winRef.closed
     const winRef = window.open(task.url, "_blank");
     if (!winRef) {
-      alert("Popup blocked — allow popups for localhost:3000 to enable auto-tracking.");
+      alert("Popup blocked — allow popups for this page to enable auto-tracking.");
       return;
     }
 
-    const timer = setInterval(async () => {
+    const timer = setInterval(() => {
       if (winRef.closed) {
         clearInterval(timer);
-        try { await api.setStatus(id, "visited"); } catch {}
-        await loadAndRender();
+        try { store.setStatus(id, "visited"); } catch {}
+        loadAndRender();
       }
     }, 500);
   }
 
   // ── Event delegation on #site-list ──────────────────────────────────────────
-  document.getElementById("site-list").addEventListener("click", async (e) => {
+  document.getElementById("site-list").addEventListener("click", e => {
     const card = e.target.closest(".site-card");
     if (!card) return;
     const id = Number(card.dataset.id);
 
-    // tag remove
     if (e.target.classList.contains("tag-remove")) {
-      const tag = e.target.dataset.tag;
-      try { await api.removeTag(id, tag); } catch (err) { alert(err.message); return; }
-      await loadAndRender();
+      try { store.removeTag(id, e.target.dataset.tag); } catch (err) { alert(err.message); return; }
+      loadAndRender();
       return;
     }
 
-    // site-name link — intercept left-click, treat same as Open button
     if (e.target.closest(".site-name")) {
       e.preventDefault();
-      await openAndTrack(id);
+      openAndTrack(id);
       return;
     }
 
     const action = e.target.dataset.action;
     if (!action) return;
 
-    if (action === "open") {
-      await openAndTrack(id);
-      return;
-    }
+    if (action === "open") { openAndTrack(id); return; }
     if (action === "mark-visiting") {
-      try { await api.setStatus(id, "visiting"); } catch (err) { alert(err.message); return; }
-      await loadAndRender();
+      try { store.setStatus(id, "visiting"); } catch (err) { alert(err.message); return; }
+      loadAndRender();
       return;
     }
     if (action === "mark-visited") {
-      try { await api.setStatus(id, "visited"); } catch (err) { alert(err.message); return; }
-      await loadAndRender();
+      try { store.setStatus(id, "visited"); } catch (err) { alert(err.message); return; }
+      loadAndRender();
       return;
     }
     if (action === "delete") {
       if (!confirm("Delete this site?")) return;
-      try { await api.deleteTask(id); } catch (err) { alert(err.message); return; }
-      await loadAndRender();
+      try { store.delete(id); } catch (err) { alert(err.message); return; }
+      loadAndRender();
     }
   });
 
   // ── Filter buttons ───────────────────────────────────────────────────────────
-  document.getElementById("toolbar").addEventListener("click", async (e) => {
+  document.getElementById("toolbar").addEventListener("click", e => {
     const btn = e.target.closest(".filter-btn");
     if (!btn) return;
 
     if (btn.dataset.tag !== undefined) {
-      // tag filter toggle
       state.filterTag = state.filterTag === btn.dataset.tag ? "" : btn.dataset.tag;
       state.filterStatus = "";
     } else if (btn.dataset.filter !== undefined) {
@@ -679,21 +637,15 @@
       state.filterTag = "";
     }
 
-    // update active classes on status filter buttons
-    document.querySelectorAll(".filter-btn[data-filter]").forEach((b) => {
-      b.classList.toggle("active", b.dataset.filter === state.filterStatus);
-    });
-    document.querySelectorAll(".filter-btn[data-tag]").forEach((b) => {
-      b.classList.toggle("active", b.dataset.tag === state.filterTag);
-    });
-
-    await loadAndRender();
+    document.querySelectorAll(".filter-btn[data-filter]").forEach(b => b.classList.toggle("active", b.dataset.filter === state.filterStatus));
+    document.querySelectorAll(".filter-btn[data-tag]").forEach(b => b.classList.toggle("active", b.dataset.tag === state.filterTag));
+    loadAndRender();
   });
 
   // ── Add form ─────────────────────────────────────────────────────────────────
   const addWrapper = document.getElementById("add-form-wrapper");
-  const addForm = document.getElementById("add-form");
-  const addError = document.getElementById("add-form-error");
+  const addForm    = document.getElementById("add-form");
+  const addError   = document.getElementById("add-form-error");
 
   document.getElementById("btn-open-add").addEventListener("click", () => {
     addWrapper.classList.add("open");
@@ -704,25 +656,21 @@
     addForm.reset();
     addError.style.display = "none";
   });
-
-  addForm.addEventListener("submit", async (e) => {
+  addForm.addEventListener("submit", e => {
     e.preventDefault();
-    const url = document.getElementById("input-url").value.trim();
+    const url  = document.getElementById("input-url").value.trim();
     const name = document.getElementById("input-name").value.trim();
-
-    // client-side URL validation
     try { new URL(url); } catch {
       addError.textContent = "Please enter a valid URL (include https://)";
       addError.style.display = "block";
       return;
     }
-
     try {
-      await api.createTask(url, name);
+      store.create(url, name);
       addForm.reset();
       addWrapper.classList.remove("open");
       addError.style.display = "none";
-      await loadAndRender();
+      loadAndRender();
     } catch (err) {
       addError.textContent = err.message;
       addError.style.display = "block";
@@ -731,12 +679,9 @@
 
   // ── Search (debounced) ───────────────────────────────────────────────────────
   let searchTimer;
-  document.getElementById("search").addEventListener("input", (e) => {
+  document.getElementById("search").addEventListener("input", e => {
     clearTimeout(searchTimer);
-    searchTimer = setTimeout(async () => {
-      state.query = e.target.value.trim();
-      await loadAndRender();
-    }, 300);
+    searchTimer = setTimeout(() => { state.query = e.target.value.trim(); loadAndRender(); }, 300);
   });
 
   // ── Init ─────────────────────────────────────────────────────────────────────
