@@ -2,6 +2,8 @@
 
 [![CI](https://github.com/tanhoang0803/Task_tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/tanhoang0803/Task_tracker/actions/workflows/ci.yml)
 
+**Live URL:** https://tanhoang0803.github.io/Task_tracker/
+
 > GitHub: https://github.com/tanhoang0803/Task_tracker
 > Project: https://roadmap.sh/projects/task-tracker
 
