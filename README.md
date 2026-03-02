@@ -1,5 +1,9 @@
 # Task Tracker CLI
 
+[![CI](https://github.com/tanhoang0803/Task_tracker/actions/workflows/ci.yml/badge.svg)](https://github.com/tanhoang0803/Task_tracker/actions/workflows/ci.yml)
+
+> GitHub: https://github.com/tanhoang0803/Task_tracker
+
 A simple command line interface (CLI) application to track and manage your tasks.
 
 ## Overview

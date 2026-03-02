@@ -1,0 +1,35 @@
+name: CI
+
+on:
+  push:
+    branches: ["master", "main"]
+  pull_request:
+    branches: ["master", "main"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Smoke test CLI
+        run: |
+          node task-cli.js add "Buy groceries"
+          node task-cli.js add "Write report"
+          node task-cli.js add "Fix bug"
+          node task-cli.js mark-in-progress 2
+          node task-cli.js mark-done 3
+          node task-cli.js update 1 "Buy groceries and cook dinner"
+          node task-cli.js list
+          node task-cli.js list done
+          node task-cli.js list not-done
+          node task-cli.js list in-progress
+          node task-cli.js delete 3
+          node task-cli.js list
